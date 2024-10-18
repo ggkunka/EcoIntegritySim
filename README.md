@@ -128,5 +128,3 @@ For further questions or inquiries, feel free to reach out:
 - **GitHub:** [ggkunka](https://github.com/ggkunka)
 
 ```
-
-Feel free to customize this `README.md` based on your specific project needs!
