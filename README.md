@@ -1,5 +1,3 @@
-Here’s a sample `README.md` for your **EcoIntegritySim** project. This document introduces the project, provides instructions on installation, usage, and key functionalities:
-
 ```markdown
 # EcoIntegritySim
 
