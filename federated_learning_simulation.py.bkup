@@ -1,0 +1,73 @@
+import flwr as fl
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+from web3 import Web3
+
+# Connect to Ganache blockchain
+ganache_url = "http://127.0.0.1:8545"
+web3 = Web3(Web3.HTTPProvider(ganache_url))
+
+# Check connection
+assert web3.is_Connected(), "Ganache connection failed"
+
+# Set contract details
+contract_address = 'your_contract_address_here'
+abi = 'your_contract_abi_here'  # Replace with ABI of your contract
+eco_integrity = web3.eth.contract(address=contract_address, abi=abi)
+
+# Define a simple neural network for anomaly detection (e.g., IDS model)
+def build_model():
+    model = keras.Sequential([
+        keras.layers.Flatten(input_shape=(28, 28)),
+        keras.layers.Dense(128, activation='relu'),
+        keras.layers.Dropout(0.2),
+        keras.layers.Dense(10)
+    ])
+    model.compile(optimizer='adam',
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
+    return model
+
+# Load dataset (we use MNIST for simplicity)
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+x_train, x_test = x_train / 255.0, x_test / 255.0
+
+# Flower client for Federated Learning
+class FLClient(fl.client.NumPyClient):
+    def __init__(self, model):
+        self.model = model
+
+    def get_parameters(self):
+        return self.model.get_weights()
+
+    def fit(self, parameters, config):
+        self.model.set_weights(parameters)
+        self.model.fit(x_train, y_train, epochs=1, verbose=0)
+        
+        # Log model update hash to blockchain
+        model_hash = "hash_of_model_update"  # This could be any hash generated after a model update
+        tx_hash = eco_integrity.functions.logData(model_hash).transact({'from': web3.eth.accounts[0]})
+        web3.eth.waitForTransactionReceipt(tx_hash)
+        print(f"Model update {model_hash} logged successfully in blockchain")
+
+        return self.model.get_weights(), len(x_train), {}
+
+    def evaluate(self, parameters, config):
+        self.model.set_weights(parameters)
+        loss, accuracy = self.model.evaluate(x_test, y_test, verbose=0)
+        return loss, len(x_test), {"accuracy": accuracy}
+
+# Start a Federated Learning simulation
+def start_federated_simulation():
+    model = build_model()
+    client = FLClient(model)
+
+    # Start federated learning server
+    fl.server.start_server(config={"num_rounds": 3})
+
+    # Start multiple clients (simulating edge devices)
+    fl.client.start_numpy_client("localhost:8080", client=client)
+
+if __name__ == "__main__":
+    start_federated_simulation()

@@ -1,0 +1,27 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract EcoIntegrity {
+    struct DataLog {
+        uint id;
+        string dataHash;
+        uint timestamp;
+        address logger;
+    }
+
+    uint public logCount = 0;
+    mapping(uint => DataLog) public logs;
+
+    event NewLog(uint id, string dataHash, uint timestamp, address logger);
+
+    function logData(string memory dataHash) public {
+        logCount++;
+        logs[logCount] = DataLog(logCount, dataHash, block.timestamp, msg.sender);
+        emit NewLog(logCount, dataHash, block.timestamp, msg.sender);
+    }
+
+    function getLog(uint id) public view returns (string memory dataHash, uint timestamp, address logger) {
+        DataLog memory logEntry = logs[id];
+        return (logEntry.dataHash, logEntry.timestamp, logEntry.logger);
+    }
+}

@@ -1,0 +1,189 @@
+import numpy as np
+from tensorflow.keras import layers, models
+from web3 import Web3
+
+# Connect to Ganache blockchain
+ganache_url = "http://127.0.0.1:8545"
+web3 = Web3(Web3.HTTPProvider(ganache_url))
+
+# Check connection
+assert web3.is_connected(), "Ganache connection failed"
+
+# Set contract details
+contract_address = '0xa9aDb02C8b93C6270A212456413720927C1fDD90'
+abi = [
+  {
+    "anonymous": False,
+    "inputs": [
+      {
+        "indexed": False,
+        "internalType": "string",
+        "name": "message",
+        "type": "string"
+      }
+    ],
+    "name": "DebugLog",
+    "type": "event"
+  },
+  {
+    "anonymous": False,
+    "inputs": [
+      {
+        "indexed": False,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": False,
+        "internalType": "string",
+        "name": "dataHash",
+        "type": "string"
+      },
+      {
+        "indexed": False,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "indexed": False,
+        "internalType": "address",
+        "name": "logger",
+        "type": "address"
+      }
+    ],
+    "name": "NewLog",
+    "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "logCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": True
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "logs",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "dataHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "logger",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": True
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "dataHash",
+        "type": "string"
+      }
+    ],
+    "name": "logData",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getLog",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "dataHash",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "logger",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function",
+    "constant": True
+  }
+]
+# Replace with ABI of your contract
+eco_integrity = web3.eth.contract(address=contract_address, abi=abi)
+
+# Anomaly Detection with Autoencoder
+def create_autoencoder(input_dim):
+    input_layer = layers.Input(shape=(input_dim,))
+    encoded = layers.Dense(128, activation="relu")(input_layer)
+    encoded = layers.Dense(64, activation="relu")(encoded)
+    encoded = layers.Dense(32, activation="relu")(encoded)
+
+    decoded = layers.Dense(64, activation="relu")(encoded)
+    decoded = layers.Dense(128, activation="relu")(decoded)
+    decoded = layers.Dense(input_dim, activation="sigmoid")(decoded)
+
+    autoencoder = models.Model(input_layer, decoded)
+    autoencoder.compile(optimizer="adam", loss="binary_crossentropy")
+    return autoencoder
+
+# Simulate IDS data (use actual data in practice)
+X_train = np.random.rand(1000, 20)  # Replace with actual data
+X_test = np.random.rand(200, 20)
+
+# Train Autoencoder
+autoencoder = create_autoencoder(X_train.shape[1])
+autoencoder.fit(X_train, X_train, epochs=50, batch_size=32, shuffle=True, validation_data=(X_test, X_test))
+
+# Save and Deploy at Edge
+autoencoder.save("ids_model.keras")
+
+# Simulate an anomaly detection and log it to the blockchain
+def log_anomaly(anomaly_hash):
+    tx_hash = eco_integrity.functions.logData(anomaly_hash).transact({'from': web3.eth.accounts[0]})
+    web3.eth.wait_for_transaction_receipt(tx_hash)
+    print(f"Anomaly {anomaly_hash} logged successfully in blockchain")
+
+# Simulate detecting an anomaly
+anomaly_hash = "hash_of_detected_anomaly"
+log_anomaly(anomaly_hash)
